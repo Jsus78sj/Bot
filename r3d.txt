@@ -1,5 +1,4 @@
 pyrogram==2.0.97
-tgcrypto
 requests 
 yt_dlp
 youtube_search
