@@ -1,17 +1,16 @@
 import time, redis, os, json, re, requests, asyncio
+from aiohttp import web
 from pyrogram import *
 
-# ========== توكن البوت (من متغير البيئة للحماية) ==========
+# ========== توكن البوت من متغير البيئة ==========
 token = os.environ.get("8633959798:AAEg6VRZPlbN4mEuCW90EMD3lPTred3dIOo")
 if not token:
     token = input('[+] Enter the bot token : ')
 
 Dev_Zaid = token.split(':')[0]
+owner_id = 8588392906  # مثبت حسب طلبك
 
-# ========== معرف المطور (مثبت داخل الكود كما طلبت) ==========
-owner_id = 8588392906
-
-# ========== إعداد Redis المضمّن (بياناتك مباشرة) ==========
+# ========== إعداد Redis (بياناتك مباشرة) ==========
 r = redis.Redis(
     host='redis-13109.c281.us-east-1-2.ec2.cloud.redislabs.com',
     port=13109,
@@ -19,7 +18,7 @@ r = redis.Redis(
     decode_responses=True
 )
 
-# ========== ملف config.py بنفس اتصال Redis ==========
+# ========== إعداد config.py بنفس اتصال Redis ==========
 to_config = f'''
 import redis
 r = redis.Redis(
@@ -30,23 +29,14 @@ r = redis.Redis(
 )
 '''
 
-print('''
-Loading…
-█▒▒▒▒▒▒▒▒▒''')
-print('\n\n')
-
-# حفظ المطور في Redis (لن يؤثر إذا كان موجوداً مسبقاً)
+# ========== أمور الإعداد الأولية ==========
+print('Loading…')
 if not r.get(f'{Dev_Zaid}botowner'):
     r.set(f'{Dev_Zaid}botowner', owner_id)
 
-# إنشاء information.py للاستخدام المحلي (اختياري)
 if not os.path.exists('information.py'):
     with open('information.py', 'w+') as f:
         f.write(f'token = "{token}"\nowner_id = {owner_id}')
-
-print('''
-10% 
-███▒▒▒▒▒▒▒ ''')
 
 to_config += f"\ntoken = '{token}'"
 to_config += f"\nDev_Zaid = token.split(':')[0]"
@@ -58,21 +48,18 @@ to_config += "\nytdb = DB('ytdb.sqlite')"
 to_config += "\nsounddb = DB('sounddb.sqlite')"
 to_config += "\nwsdb = DB('wsdb.sqlite')"
 
-print('''
-30% 
-█████▒▒▒▒▒ ''')
 with open('config.py', 'w+') as w:
     w.write(to_config)
-print('''
-50% 
-███████▒▒▒ ''')
 
-app = Client(f'{Dev_Zaid}r3d', 9398500, 'ad2977d673006bed6e5007d953301e13',
+print('50% ready...')
+
+app = Client(
+    f'{Dev_Zaid}r3d', 9398500, 'ad2977d673006bed6e5007d953301e13',
     bot_token=token,
     plugins={"root": "Plugins"},
 )
 
-# إعدادات افتراضية
+# الإعدادات الافتراضية
 if not r.get(f'{Dev_Zaid}:botkey'):
     r.set(f'{Dev_Zaid}:botkey', '⇜')
 if not r.get(f'{Dev_Zaid}botname'):
@@ -85,36 +72,44 @@ def Find(text):
     url = re.findall(m, text)
     return [x[0] for x in url]
 
-app.start()
+# ========== سيرفر ويب بسيط لمنع السبات ==========
+async def handle_health(request):
+    return web.Response(text="OK")
 
-print('''
+async def run_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    app_web = web.Application()
+    app_web.router.add_get('/', handle_health)
+    runner = web.AppRunner(app_web)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"Health server started on port {port}")
+
+# ========== تشغيل البوت + السيرفر ==========
+async def main():
+    await app.start()
+    print('''
 [===========================]
-
 █████╗░██████╗░██████╗░
 ██╔══██╗╚════██╗██╔══██╗
 ██████╔╝░█████╔╝██║░░██║
 ██╔══██╗░╚═══██╗██║░░██║
 ██║░░██║██████╔╝██████╔╝
 ╚═╝░░╚═╝╚═════╝░╚═════╝░
-
 [===========================]
-
 🔮 Your bot started successfully on R 3 D ☆ Source 🔮
-
-•••••••• @yqyqy66 - @yqyqy66 •••••••••
-
-
 ''')
-print('''
+    if r.get(f'DevGroup:{Dev_Zaid}'):
+        id = int(r.get(f'DevGroup:{Dev_Zaid}'))
+        try:
+            await app.send_message(id, "تم اتشغيل البوت بنجاح ✔️")
+        except:
+            pass
 
-100% 
-██████████''')
+    # تشغيل سيرفر الويب بنفس حلقة الحدث
+    await run_web_server()
+    await idle()
 
-if r.get(f'DevGroup:{Dev_Zaid}'):
-    id = int(r.get(f'DevGroup:{Dev_Zaid}'))
-    try:
-        app.send_message(id, "تم اتشغيل البوت بنجاح ✔️")
-    except:
-        pass
-
-idle()
+if __name__ == "__main__":
+    app.loop.run_until_complete(main())
