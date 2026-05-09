@@ -1,19 +1,10 @@
 #!/bin/bash
-# R3D Telegram Bot - First time setup and launch
-
-echo "Installing system dependencies..."
-sudo apt-get update
-sudo apt-get install -y ffmpeg redis-server
-
-echo "Starting Redis..."
+echo "جاري تنصيب رعد..."
+sudo apt-get update -y
+sudo apt-get install ffmpeg redis-server python3-pip -y
 sudo service redis-server start
 
-echo "Installing Python requirements..."
-python3 -m pip install -r r3d.txt
+pip3 install -r requirements.txt
 
-# Run the main bot in a screen session
-screen -dmS r3d python3 main.py
-
-echo "Bot started in screen session 'r3d'."
-echo "To attach: screen -r r3d"
-echo "To stop: screen -X -S r3d quit"
+echo "✅ تم التنصيب بنجاح"
+echo "شغل البوت بـ: screen -S r3d python3 main.py"
